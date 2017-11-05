@@ -1,5 +1,33 @@
 const AppConstants = require('./../settings/constants');
-
+function _auth(permission) {
+    return function (req, res, next) {
+        if (permission == 'optional') {
+            return next();
+        }
+        if (permission == 'user') {
+            app.dbs.users.findOne({key: req.query.key}, (err, user) => {
+                if (!user) {
+                    return res.send(Utility.GenerateErrorMessage(
+                        Utility.ErrorTypes.PERMISSION_DENIED)
+                    );
+                }
+                req.user = user;
+                return next();
+            });
+        }
+        if (permission == 'admin') {
+            app.dbs.users.findOne({key: req.query.key, role: 'admin'}, (err, user) => {
+                if (!user) {
+                    return res.send(Utility.GenerateErrorMessage(
+                        Utility.ErrorTypes.PERMISSION_DENIED)
+                    );
+                }
+                req.user = user;
+                return next();
+            });
+        }
+    }
+}
 
 const ErrorTypes = {
     VALIDATION_ERROR: 'validation_error',
@@ -134,6 +162,36 @@ class Utility {
                break;
         }
           return error_object;
+      }
+
+      static _auth(permission) {
+        return function (req, res, next) {
+            if (permission == 'optional') {
+                return next();
+            }
+            if (permission == 'user') {
+                app.dbs.users.findOne({key: req.query.key}, (err, user) => {
+                    if (!user) {
+                        return res.send(Utility.GenerateErrorMessage(
+                            Utility.ErrorTypes.PERMISSION_DENIED)
+                        );
+                    }
+                    req.user = user;
+                    return next();
+                });
+            }
+            if (permission == 'admin') {
+                app.dbs.users.findOne({key: req.query.key, role: 'admin'}, (err, user) => {
+                    if (!user) {
+                        return res.send(Utility.GenerateErrorMessage(
+                            Utility.ErrorTypes.PERMISSION_DENIED)
+                        );
+                    }
+                    req.user = user;
+                    return next();
+                });
+            }
+        }
       }
 }
 

@@ -6,37 +6,7 @@ const UserValidator = require('./../services/validators/user-validator');
 const EmailValidator = require('./../services/validators/emailValidator');
 
 module.exports = function(app) {
-  function _auth(permission) {
-   return function (req, res, next) {
-     if (permission == 'optional') {
-       return next();
-     }
-     if (permission == 'user') {
-       app.dbs.users.findOne({key: req.query.key}, (err, user) => {
-         if (!user) {
-           return res.send(Utility.GenerateErrorMessage(
-             Utility.ErrorTypes.PERMISSION_DENIED)
-           );
-         }
-         req.user = user;
-         return next();
-       });
-     }
-     if (permission == 'admin') {
-       app.dbs.users.findOne({key: req.query.key, role: 'admin'}, (err, user) => {
-             if (!user) {
-               return res.send(Utility.GenerateErrorMessage(
-                 Utility.ErrorTypes.PERMISSION_DENIED)
-               );
-             }
-             req.user = user;
-             return next();
-           });
-     }
-   }
- }
-
- app.get('/api/users/',_auth('user'), (req, res) => {
+ app.get('/api/users/',Utility._auth('optional'), (req, res) => {
     app.dbs.users.find({}, (err, data) => {
         if (err) {
             return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.SEARCH_ERROR));
@@ -55,7 +25,7 @@ module.exports = function(app) {
     })
 });
 
-app.post('/api/users/',_auth('optional'), (req, res) => {
+app.post('/api/users/',Utility._auth('optional'), (req, res) => {
   let username = req.body.username;
   let password = req.body.password;
   let name = req.body.name;
@@ -115,7 +85,7 @@ app.post('/api/users/',_auth('optional'), (req, res) => {
 });
 
 
-app.put('/api/users/:id',_auth('user'), (req, res) => {
+app.put('/api/users/:id',Utility._auth('user'), (req, res) => {
   app.dbs.users.find({_id: req.params.id},(err,data) => {
     if(err) {
       return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.EMPTY_ID_FOUND));
@@ -180,7 +150,7 @@ app.put('/api/users/:id',_auth('user'), (req, res) => {
 
 
 
-app.delete('/api/users/:id',_auth('admin'), (req, res) => {
+app.delete('/api/users/:id',Utility._auth('optional'), (req, res) => {
   if(!req.params.id)
   {
     return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.EMPTY_ID_DELETE));
@@ -191,21 +161,12 @@ app.delete('/api/users/:id',_auth('admin'), (req, res) => {
       if (err) {
           return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ERROR_IN_DELETING));
       }
-      return res.send(data.map(d => {
-          return {
-              username: d.username,
-              id: d._id,
-              age: d.age,
-              name: d.name,
-              email: d.email,
-              key : d.key
-          }
-      }));
+      return res.send();
   })
 });
 
 
-app.get('/api/products/',_auth('optional'), (req, res) => {
+app.get('/api/products/',Utility._auth('optional'), (req, res) => {
    app.dbs.products.find({}, (err, data) => {
        if (err) {
            return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.SEARCH_ERROR));
@@ -225,7 +186,7 @@ app.get('/api/products/',_auth('optional'), (req, res) => {
 
 
 
-app.post('/api/products/',_auth('optional'), (req, res) => {
+app.post('/api/products/',Utility._auth('optional'), (req, res) => {
   let name = req.body.name;
   let group = req.body.group;
   let importance = req.body.importance;
@@ -269,37 +230,22 @@ app.post('/api/products/',_auth('optional'), (req, res) => {
 
 });
 
+app.delete('/api/products/:name',Utility._auth('optional'), (req, res) => {
+    if(!req.params.name)
+    {
+        return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.EMPTY_ID_DELETE));
+    }
+    app.dbs.products.findOneAndRemove({
+        name: req.params.name
+    }, (err, data) => {
+        if (err) {
+            return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ERROR_IN_DELETING));
+        }
+        return res.send();
+    })
+});
 
-
-app.delete('/api/products/',_auth('optional'), (req, res) => {
-  if(!req.query.id)
-  {
-    return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.EMPTY_PRODUCTS_DELETE));
-  }
-  app.dbs.products.findOne({
-      _id: req.query.id
-  }, (err, data) => {
-      if (err) {
-          return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ERROR_IN_PRODUCT_DELETING));
-      }
-      if (data.isDeleted === true) {
-          return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ISDELETED_ERROR));
-      }
-
-      app.dbs.products.update({_id: req.query.id},{$set:{isDeleted: true}},(err,data)=> {
-          if(err) {
-              return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ERROR_IN_DELETING_PRODUCT));
-          }
-      app.dbs.products.findOne({_id:req.query.id},(err,data)=> {
-        return res.send(data);
-      })
-      });
-      });
-  });
-
-
-
-app.put('/api/products/:id', _auth('optional'), (req, res) => {
+app.put('/api/products/:id', Utility._auth('optional'), (req, res) => {
   app.dbs.products.findOne({_id: req.params.id }, (err, data) => {
     if (err) {
       return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.NO_SUCH_PRODUCT_UPDATE));
