@@ -7,8 +7,13 @@ const EmailValidator = require('./../services/validators/emailValidator');
 
 module.exports = function(app) {
  app.get('/api/users/',Utility._auth('optional'), (req, res) => {
-    app.dbs.users.find({}, (err, data) => {
+    app.dbs.users.find({})
+        .populate('products',['name','group'])
+        .skip(req.query.offset)
+        .limit(req.query.limit)
+        .exec((err, data) => {
         if (err) {
+            console.log(err);
             return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.SEARCH_ERROR));
         }
 
@@ -19,7 +24,8 @@ module.exports = function(app) {
                 age: d.age,
                 name: d.name,
                 email: d.email,
-                key : d.key
+                key : d.key,
+                products: d.products
             }
         }));
     })
@@ -63,7 +69,8 @@ app.post('/api/users/',Utility._auth('optional'), (req, res) => {
         password: password,
         age: age,
         email: email,
-        name: name
+        name: name,
+
 
     }, (err, data) => {
         if (err) {
@@ -174,6 +181,7 @@ app.get('/api/products/',Utility._auth('optional'), (req, res) => {
 
        return res.send(data.map(d => {
            return {
+               id:d._id,
                name: d.name,
                group: d.group,
                importance: d.importance,

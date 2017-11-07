@@ -1,8 +1,9 @@
 const mongoose = require ('mongoose');
 const keygen = require('keygenerator');
-
-const EmailValidator = require('./../services/validators/emailValidator')
 const Schema = mongoose.Schema;
+
+const EmailValidator = require('./../services/validators/emailValidator');
+const products = require('./products')
 
 
 function generateAPIKey() {
@@ -49,7 +50,14 @@ let userSchema = Schema ({
            type: String,
            enum: ['user','admin'],
            default: 'user'
-        }
+        },
+        products:[{
+                type:Schema.ObjectId,
+                index:true,
+                ref:'products',
+                default:null
+
+            }]
 });
 
 module.exports = mongoose.model('users',userSchema);

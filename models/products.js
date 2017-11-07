@@ -1,10 +1,8 @@
 const mongoose = require ('mongoose');
 const Schema = mongoose.Schema;
-
-
 const AppConstants = require('./../settings/constants');
-
 let productSchema = Schema ({
+
   name: {
     type: String,
     index: {unique: true}
@@ -18,15 +16,12 @@ let productSchema = Schema ({
     type: String,
     enum: ['very','middle','less'],
   },
-  /*img: {
-    type: Picture
-    //TODO default value for img
-  },*/
   isDeleted: {
     type: Boolean,
     default: false
   }
 });
+
 
 
 module.exports = mongoose.model('products',productSchema);
