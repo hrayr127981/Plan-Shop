@@ -1,12 +1,16 @@
 const crypto = require('crypto');
 const AppConstants = require('./../settings/constants');
+const multer  = require('multer');
+
+var upload = multer({ dest: 'uploads/' });
+
 
 const Utility = require('./../services/utility');
 const UserValidator = require('./../services/validators/user-validator');
-const EmailValidator = require('./../services/validators/emailValidator');
 
+const EmailValidator = require('./../services/validators/emailValidator');
 module.exports = function(app) {
- app.get('/api/users/',Utility._auth('optional'), (req, res) => {
+    app.get('/api/users/',Utility._auth('optional'), (req, res) => {
     app.dbs.users.find({})
         .populate('products',['name','group'])
         .skip(req.query.offset)
@@ -191,9 +195,6 @@ app.get('/api/products/',Utility._auth('optional'), (req, res) => {
        }));
    })
 });
-
-
-
 app.post('/api/products/',Utility._auth('optional'), (req, res) => {
   let name = req.body.name;
   let group = req.body.group;
@@ -277,13 +278,7 @@ app.put('/api/products/:id', Utility._auth('optional'), (req, res) => {
     if (!['very','middle','less'].includes(product.importance)) {
       return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ERROR_IMPORTANCE));
     }
-  /*  app.dbs.products.findOne({name: product.name}, (err,data)=>{
-      if(data) {
-        if(data.id !== product.id){
-          return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.PRODUCTS_EXISTS));
-        }
-      }
-    });*/
+
     app.dbs.products.update({_id:product.id},{$set:{name : product.name, group : product.group, importance : product.importance, isDeleted : product.isDeleted }},
     (err, value) => {
    if(err) {
@@ -302,5 +297,73 @@ app.put('/api/products/:id', Utility._auth('optional'), (req, res) => {
          });
        });
 });
+    app.get('/api/shoplist/',Utility._auth('optional'), (req, res) => {
+        app.dbs.shoplist.find({isActive: true})
+            .populate('products',['name','group'])
+            .exec( (err, data) => { console.log(data);
+                if (err) {
+                    console.log(err);//TODO write this error on log file
+                    return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.NO_SHOP_LIST));
+                }
+
+                return res.send(data.map(d => {
+                    return {
+                        listname: d.list_name,
+                        id: d._id,
+                        products: d.products
+                    }
+                }));
+            })
+    });
+    app.post('/api/shoplist',Utility._auth('optional'), (req, res) => {
+        let list_name = req.body.list_name;
+        if (list_name.length < AppConstants.LIST_NAME_MIN_LENGTH || list_name.length > AppConstants.LIST_NAME_MAX_LENGTH) {
+            return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.INVALID_LIST_NAME_LENGTH));
+        }
+        app.dbs.shoplist.create({
+            list_name: list_name
+        },(err,data)=> {
+            if(err) {
+                return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ERROR_CREATION_SHOPLIST));
+            }
+            let shoplist = {
+                list_name: data.list_name,
+                isActive: data.isActive,
+                _id:data._id,
+                products: data.products
+            };
+            return res.send(shoplist);
+        });
+    });
+
+    app.delete('/api/shoplist/',Utility._auth('optional'), (req, res) => {
+        if (!req.query.id) {
+            return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.EMPTY_SHOPLIST_DELETE));
+        }
+        app.dbs.shoplist.findOne({
+            _id: req.query.id
+        }, (err, data) => {
+            if (err) {
+                return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ERROR_IN_SHOPLIST_DELETING));
+            }
+            if (data.isActive === false) {
+                return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.IS_NOT_ACTIVE));
+            }
+
+            app.dbs.shoplist.update({_id: req.query.id},{$set:{isDeleted: true}}, (err,data) => {
+                if(err) {
+                    return res.send(Utility.GenerateErrorMessage(Utility.ErrorTypes.ERROR_IN_SHOPLIST_DELETING));
+                }
+                app.dbs.shoplist.findOne({_id:req.query.id},(err,data)=> {
+                    return res.send(data);
+                })
+            });
+        });
+    })
+
+
+    app.post('/api/photos/upload',upload.single('myfile'), function (req, res, next) {
+        res.send(req.file);
+    })
 
 }
